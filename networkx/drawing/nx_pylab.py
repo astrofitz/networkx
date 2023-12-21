@@ -312,9 +312,9 @@ def draw_networkx_nodes(
     G,
     pos,
     nodelist=None,
-    node_size=300,
-    node_color="#1f78b4",
-    node_shape="o",
+    node_size=None,
+    node_color=None,
+    node_shape=None,
     alpha=None,
     cmap=None,
     vmin=None,
@@ -430,6 +430,21 @@ def draw_networkx_nodes(
     except KeyError as err:
         raise nx.NetworkXError(f"Node {err} has no position.") from err
 
+    if node_size is None:
+        node_size = [G.nodes[n].get("size", 300) for n in nodelist]
+
+    if node_color is None:
+        node_color = [G.nodes[n].get("color", "#1f78b4") for n in nodelist]
+
+    if node_shape is None:
+        node_shape = [G.nodes[n].get("shape", "o") for n in nodelist]
+        marker = None
+    else:
+        if len(node_shape) != len(nodelist):
+            marker = node_shape  # assumes single element specified
+        else:
+            marker = None
+
     if isinstance(alpha, Iterable):
         node_color = apply_alpha(node_color, alpha, nodelist, cmap, vmin, vmax)
         alpha = None
@@ -439,7 +454,7 @@ def draw_networkx_nodes(
         xy[:, 1],
         s=node_size,
         c=node_color,
-        marker=node_shape,
+        marker=marker,
         cmap=cmap,
         vmin=vmin,
         vmax=vmax,
@@ -448,6 +463,20 @@ def draw_networkx_nodes(
         edgecolors=edgecolors,
         label=label,
     )
+
+    if marker is None:
+        import matplotlib.markers as mmarkers
+
+        paths = []
+        for marker in node_shape:
+            if isinstance(marker, mmarkers.MarkerStyle):
+                marker_obj = marker
+            else:
+                marker_obj = mmarkers.MarkerStyle(marker)
+            path = marker_obj.get_path().transformed(marker_obj.get_transform())
+            paths.append(path)
+        node_collection.set_paths(paths)
+
     ax.tick_params(
         axis="both",
         which="both",
@@ -1020,8 +1049,8 @@ def draw_networkx_labels(
     if labels is None:
         labels = {n: n for n in G.nodes()}
         for n in G.nodes:
-            if 'label' in G.nodes[n]:
-                labels[n] = G.nodes[n]['label']
+            if "label" in G.nodes[n]:
+                labels[n] = G.nodes[n]["label"]
 
     text_items = {}  # there is no text collection so we'll fake one
     for n, label in labels.items():
